@@ -503,7 +503,13 @@ If tests fail, check:
    npx hardhat run scripts/deploy.js --network apechain
    ```
    
-5. **Update Frontend Configuration**:
+5. **Verify Smart Contract on APEscan (Optional)**:
+   ```bash
+   # Get your contract address from the deployment output
+   npx hardhat verify --network apechain YOUR_CONTRACT_ADDRESS
+   ```
+
+6. **Update Frontend Configuration**:
    - Add the deployed contract address to your `.env` file:
    ```
    REACT_APP_VOTER_DID_CONTRACT_ADDRESS=your_deployed_contract_address
@@ -518,8 +524,8 @@ If tests fail, check:
    # Inside the console:
    > const VoterDID = await ethers.getContractFactory("VoterDID")
    > const contract = await VoterDID.attach("YOUR_DEPLOYED_CONTRACT_ADDRESS")
-   > await contract.registerDID("TEST123", "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK")
-   > await contract.getDID("TEST123")
+   > await contract.registerVoter("TEST123", "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK")
+   > await contract.getVoterDID("TEST123")
    ```
 
 2. **Run Contract Tests**:
@@ -527,10 +533,53 @@ If tests fail, check:
    npx hardhat test --network apechain
    ```
 
+### Deploying BallotValidation Contract
+
+In addition to the VoterDID contract, you can also deploy the BallotValidation contract which handles verification of ballot counting results:
+
+1. **Create a Deployment Script**:
+   - Create a file named `scripts/deployBallotValidation.js`:
+   
+   ```javascript
+   const hre = require("hardhat");
+
+   async function main() {
+     console.log("Deploying BallotValidation contract to APEChain Curtis Testnet...");
+   
+     // Get the ContractFactory
+     const BallotValidation = await hre.ethers.getContractFactory("BallotValidation");
+     
+     // Deploy it
+     const ballotValidation = await BallotValidation.deploy();
+     
+     // Wait for deployment to finish
+     await ballotValidation.deployed();
+   
+     console.log(`BallotValidation deployed to: ${ballotValidation.address}`);
+     console.log(`Transaction hash: ${ballotValidation.deployTransaction.hash}`);
+     console.log(`Block number: ${ballotValidation.deployTransaction.blockNumber}`);
+     console.log("View on explorer:", `${process.env.REACT_APP_APECHAIN_EXPLORER_URL}/address/${ballotValidation.address}`);
+   
+     return ballotValidation;
+   }
+   
+   main()
+     .then(() => process.exit(0))
+     .catch((error) => {
+       console.error("Deployment failed:", error);
+       process.exit(1);
+     });
+   ```
+
+2. **Deploy the BallotValidation Contract**:
+   ```bash
+   npx hardhat run scripts/deployBallotValidation.js --network apechain
+   ```
+
 ### Common Issues and Solutions
 
 1. **Not enough funds**: Ensure your wallet has enough APE tokens for deployment
-   - Get test APE tokens from the APEChain Curtis Testnet Faucet
+   - Check APEChain faucet availability at https://curtis.apescan.io
 
 2. **Gas price errors**: Update the gasPrice in hardhat.config.js
 
@@ -548,7 +597,7 @@ If tests fail, check:
 
 ### Further Resources
 
-- [APEChain Documentation](https://docs.apechain.io/)
+- [APEChain Documentation](https://docs.apechain.org/)
 - [Hardhat Documentation](https://hardhat.org/getting-started/)
-- [APEChain Curtis Testnet Explorer](https://curtis.apescan.io/)
-- [APEChain Curtis Testnet Faucet](https://faucet.apechain.io/)
+- [Curtis Testnet Explorer](https://curtis.apescan.io/)
+- [Ethers.js Documentation](https://docs.ethers.io/v5/)

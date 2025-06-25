@@ -12,6 +12,18 @@ import VoterDIDArtifact from '../artifacts/contracts/VoterDID.sol/VoterDID.json'
  * 4. Verifying voter DIDs on the blockchain
  */
 class BlockchainService {
+  // Helper function to determine if blockchain transactions should be skipped
+  skipBlockchainOnInsufficientFunds() {
+    // Get setting from localStorage or default to false
+    const skipSetting = localStorage.getItem('skipBlockchainOnInsufficientFunds');
+    return skipSetting === 'true';
+  }
+  
+  // Helper to set the skip blockchain setting
+  setSkipBlockchainOnInsufficientFunds(skip) {
+    localStorage.setItem('skipBlockchainOnInsufficientFunds', skip ? 'true' : 'false');
+    return skip;
+  }
   constructor() {
     // APEChain Curtis Testnet Configuration from environment variables
     this.network = {
@@ -34,24 +46,33 @@ class BlockchainService {
    */
   async initialize() {
     try {
+      console.log('Initializing BlockchainService with network:', this.network);
+      
       // Create an ethers provider for APEChain Curtis Testnet
       this.provider = new ethers.providers.JsonRpcProvider(this.network.rpcUrl);
+      console.log('Provider created with RPC URL:', this.network.rpcUrl);
       
       // Test the connection
+      console.log('Testing network connection...');
       const networkInfo = await this.provider.getNetwork();
+      console.log('Connected to network:', networkInfo);
       
       // Check if we're connected to the correct network
       if (networkInfo.chainId !== this.network.chainId) {
-        console.error('Connected to wrong network', networkInfo);
+        console.error(`Connected to wrong network. Expected chainId: ${this.network.chainId}, got: ${networkInfo.chainId}`);
         return false;
       }
       
       // Check for existing local configuration
       const storedContractAddr = localStorage.getItem('voterDIDContractAddress');
       if (storedContractAddr) {
+        console.log('Found stored contract address:', storedContractAddr);
         this.voterDIDContractAddress = storedContractAddr;
+      } else {
+        console.log('No stored contract address found. Using address from environment:', process.env.REACT_APP_VOTER_DID_CONTRACT_ADDRESS);
       }
       
+      console.log('BlockchainService initialization completed successfully');
       this.isInitialized = true;
       return true;
     } catch (error) {
@@ -68,8 +89,11 @@ class BlockchainService {
    */
   importPrivateKey(privateKey) {
     try {
+      console.log('Importing private key...');
+      
       // Validate the private key
       if (!privateKey || typeof privateKey !== 'string' || privateKey.trim() === '') {
+        console.error('Private key validation failed: Empty or invalid key');
         return {
           success: false,
           error: 'Private key cannot be empty'
@@ -78,15 +102,25 @@ class BlockchainService {
 
       // Make sure it starts with 0x if it doesn't already
       const formattedKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+      console.log('Private key formatted correctly');
       
-      // Create wallet from private key
-      const wallet = new ethers.Wallet(formattedKey, this.provider);
-      this.signer = wallet;
-      
-      return {
-        success: true,
-        address: wallet.address
-      };
+      try {
+        // Create wallet from private key
+        const wallet = new ethers.Wallet(formattedKey, this.provider);
+        this.signer = wallet;
+        
+        console.log('Wallet created successfully with address:', wallet.address);
+        return {
+          success: true,
+          address: wallet.address
+        };
+      } catch (walletError) {
+        console.error('Error creating wallet:', walletError);
+        return {
+          success: false,
+          error: `Invalid private key: ${walletError.message}`
+        };
+      }
     } catch (error) {
       console.error('Failed to import private key:', error);
       return {
@@ -151,23 +185,62 @@ class BlockchainService {
    * @returns {Object} Transaction result information
    */
   async storeDID(nationalId, did) {
+    console.log(`StoreDID called with nationalId: ${nationalId}, did: ${did}`);
+    
+    // Check if blockchain transactions should be skipped due to insufficient funds
+    if (this.skipBlockchainOnInsufficientFunds()) {
+      console.log('Skipping blockchain transaction due to insufficient funds setting');
+      return { 
+        success: false, 
+        error: 'Blockchain transactions are disabled due to insufficient funds',
+        errorCode: 'BLOCKCHAIN_DISABLED',
+        skipped: true
+      };
+    }
+    
     if (!this.isInitialized || !this.signer) {
+      console.error('StoreDID failed: Blockchain not initialized or no signer available');
       return { 
         success: false,
         error: 'Blockchain not initialized or no private key provided' 
       };
     }
+    
+    // Check wallet balance before attempting transaction
+    try {
+      const balance = await this.provider.getBalance(this.signer.address);
+      console.log(`Wallet balance: ${ethers.utils.formatEther(balance)} APE`);
+      
+      // If balance is too low, return an error
+      if (balance.lt(ethers.utils.parseEther("0.01"))) {
+        console.error('StoreDID failed: Insufficient funds for transaction');
+        return {
+          success: false,
+          error: 'Insufficient APE tokens to pay for transaction fees. Please fund the wallet with APE tokens.',
+          errorCode: 'INSUFFICIENT_FUNDS',
+          walletAddress: this.signer.address,
+          balance: ethers.utils.formatEther(balance)
+        };
+      }
+    } catch (balanceError) {
+      console.error('Error checking wallet balance:', balanceError);
+      // Continue with the transaction attempt even if balance check fails
+    }
 
     if (!this.voterDIDContract) {
+      console.log('No contract instance exists, attempting to create one');
       // If contract instance doesn't exist but we have an address, create one
       if (this.voterDIDContractAddress) {
+        console.log(`Using existing contract address: ${this.voterDIDContractAddress}`);
         const { abi } = VoterDIDArtifact;
         this.voterDIDContract = new ethers.Contract(
           this.voterDIDContractAddress,
           abi,
           this.signer
         );
+        console.log('Contract instance created successfully');
       } else {
+        console.error('StoreDID failed: No contract address available');
         return { 
           success: false,
           error: 'VoterDID contract not deployed' 
@@ -176,11 +249,27 @@ class BlockchainService {
     }
 
     try {
-      // Call the contract to store the DID
-      const tx = await this.voterDIDContract.registerDID(nationalId, did);
+      console.log('About to call contract.registerDID method');
+      console.log('Contract address:', this.voterDIDContractAddress);
+      console.log('Signer address:', this.signer.address);
+      
+      // Estimate gas for the transaction
+      const gasEstimate = await this.voterDIDContract.estimateGas.registerDID(nationalId, did);
+      console.log('Estimated gas for transaction:', gasEstimate.toString());
+      
+      // Add some buffer to the gas limit to ensure transaction success
+      const gasLimit = gasEstimate.mul(120).div(100); // 20% buffer
+      
+      // Call the contract to store the DID with explicit gas limit
+      const tx = await this.voterDIDContract.registerDID(nationalId, did, {
+        gasLimit
+      });
+      console.log('Transaction sent:', tx.hash);
       
       // Wait for transaction to be confirmed
+      console.log('Waiting for transaction confirmation...');
       const receipt = await tx.wait();
+      console.log('Transaction confirmed in block:', receipt.blockNumber);
       
       return {
         success: true,
@@ -189,9 +278,31 @@ class BlockchainService {
       };
     } catch (error) {
       console.error('Failed to store DID:', error);
+      // Log detailed error information to help debugging
+      if (error.code) {
+        console.error('Error code:', error.code);
+      }
+      if (error.reason) {
+        console.error('Error reason:', error.reason);
+      }
+      if (error.transaction) {
+        console.error('Failed transaction:', error.transaction);
+      }
+      
+      // Format a more user-friendly error message based on the error type
+      let errorMessage = error.message;
+      if (error.code === 'INSUFFICIENT_FUNDS') {
+        errorMessage = 'Insufficient APE tokens to pay for blockchain transaction. Please fund the wallet with APE tokens.';
+      } else if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+        errorMessage = 'Unable to estimate gas for transaction. The contract may be rejecting the operation.';
+      } else if (error.code === 'TIMEOUT') {
+        errorMessage = 'Transaction timed out. The network may be congested.';
+      }
+      
       return {
         success: false,
-        error: error.message
+        error: errorMessage,
+        errorCode: error.code || 'UNKNOWN_ERROR'
       };
     }
   }

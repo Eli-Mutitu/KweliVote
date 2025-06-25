@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KweliVote Blockchain Fixer</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 { color: #2563eb; }
+    h2 { color: #1e40af; margin-top: 30px; }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .warning {
+      background-color: #fff7ed;
+      border-left: 4px solid #f97316;
+      padding: 10px 15px;
+    }
+    .success {
+      background-color: #ecfdf5;
+      border-left: 4px solid #10b981;
+      padding: 10px 15px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    code {
+      background-color: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .toggle {
+      margin-top: 10px;
+    }
+    #status {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>KweliVote Blockchain Fixer</h1>
+  <p>This tool helps you fix blockchain integration issues, particularly the "insufficient funds" error.</p>
+  
+  <div class="card">
+    <h2>Current Blockchain Status</h2>
+    <div id="status">Checking status...</div>
+  </div>
+  
+  <div class="card">
+    <h2>Temporary Fix</h2>
+    <p>If you're getting insufficient funds errors, you can temporarily disable blockchain integration:</p>
+    
+    <div class="toggle">
+      <input type="checkbox" id="skipBlockchain"> 
+      <label for="skipBlockchain">Skip blockchain due to insufficient funds</label>
+    </div>
+    
+    <p>When this option is enabled:</p>
+    <ul>
+      <li>Voter registration will continue to work</li>
+      <li>Voter data will be saved to the database</li>
+      <li>Blockchain integration will be skipped</li>
+      <li>You can re-enable it once you've funded your wallet</li>
+    </ul>
+    
+    <button id="saveSettings">Save Settings</button>
+  </div>
+  
+  <div class="card">
+    <h2>Permanent Fix</h2>
+    <p>To fix this issue permanently, you need to fund your wallet with APE tokens:</p>
+    
+    <ol>
+      <li>Get your wallet address (shown above)</li>
+      <li>Visit the APEChain Curtis Testnet Faucet</li>
+      <li>Request free testnet tokens</li>
+      <li>Wait for tokens to arrive (typically a few minutes)</li>
+      <li>Return to KweliVote and re-enable blockchain integration</li>
+    </ol>
+    
+    <div class="warning">
+      <strong>Note:</strong> These are testnet tokens with no real value, used only for testing.
+    </div>
+  </div>
+
+  <script>
+    // Function to check localStorage
+    function checkStatus() {
+      const skipBlockchain = localStorage.getItem('skipBlockchainOnInsufficientFunds') === 'true';
+      document.getElementById('skipBlockchain').checked = skipBlockchain;
+      
+      const statusDiv = document.getElementById('status');
+      if (skipBlockchain) {
+        statusDiv.innerHTML = `
+          <div class="warning">
+            <strong>Blockchain Integration: DISABLED</strong><br>
+            Blockchain storage is currently disabled due to insufficient funds.
+            Voter registration will work, but DIDs will not be stored on the blockchain.
+          </div>
+        `;
+      } else {
+        statusDiv.innerHTML = `
+          <div class="success">
+            <strong>Blockchain Integration: ENABLED</strong><br>
+            Voter DIDs will be stored on the blockchain if funds are available.
+          </div>
+        `;
+      }
+    }
+    
+    // Save settings
+    document.getElementById('saveSettings').addEventListener('click', function() {
+      const skipBlockchain = document.getElementById('skipBlockchain').checked;
+      localStorage.setItem('skipBlockchainOnInsufficientFunds', skipBlockchain ? 'true' : 'false');
+      
+      alert(skipBlockchain 
+        ? 'Blockchain integration has been disabled. Voters will be registered in the database only.' 
+        : 'Blockchain integration has been enabled. Make sure your wallet has sufficient funds.');
+      
+      checkStatus();
+    });
+    
+    // Initialize
+    checkStatus();
+  </script>
+</body>
+</html>

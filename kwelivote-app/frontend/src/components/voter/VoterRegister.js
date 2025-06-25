@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import VoterStep1 from './VoterStep1';
 import VoterStep2 from './VoterStep2';
 import { voterAPI } from '../../utils/api';
+import blockchainService from '../../services/BlockchainService';
 
 const VoterRegister = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -169,13 +170,24 @@ const VoterRegister = () => {
   }, [showSuccess, successMessage, isEditMode]);
 
   // Function to poll for blockchain transaction status
-  const pollForTransactionStatus = async (voterId, initialTxId, isUpdate = false) => {
+  const pollForTransactionStatus = async (voterId, initialTxId, isUpdate = false, blockchainSkipped = false) => {
     let attempts = 0;
     const maxAttempts = 15; // Maximum polling attempts
     const pollInterval = 2000; // Poll every 2 seconds
     let txId = initialTxId;
     
     // Set a temporary informational message
+    if (blockchainSkipped) {
+      // If blockchain storage was skipped due to insufficient funds
+      setSuccessMessage(isUpdate 
+        ? 'Voter record updated in database only. Blockchain registration skipped due to insufficient funds.' 
+        : 'Voter registered in database only. Blockchain registration skipped due to insufficient funds.');
+      setShowSuccess(true);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Normal flow when blockchain transaction is expected
     setSuccessMessage(isUpdate 
       ? 'Voter record updated. Waiting for blockchain confirmation...' 
       : 'Voter registered. Waiting for blockchain confirmation...');
@@ -224,6 +236,95 @@ const VoterRegister = () => {
     setIsSubmitting(false);
   };
   
+  // Function to handle saving voter DID to the blockchain
+  const saveToBlockchain = async (nationalId, did, options = {}) => {
+    try {
+      // Check if blockchain should be skipped
+      if (options.skipBlockchain) {
+        console.log('Skipping blockchain storage due to configuration');
+        return { 
+          success: false, 
+          error: 'Blockchain storage skipped', 
+          skipped: true 
+        };
+      }
+
+      // Check if there's a global setting to skip blockchain
+      if (blockchainService.skipBlockchainOnInsufficientFunds && blockchainService.skipBlockchainOnInsufficientFunds()) {
+        console.log('Skipping blockchain storage due to insufficient funds setting');
+        return { 
+          success: false, 
+          error: 'Blockchain transactions are disabled due to insufficient funds',
+          errorCode: 'BLOCKCHAIN_DISABLED',
+          skipped: true
+        };
+      }
+      if (!did) {
+        console.warn('No DID provided for blockchain storage');
+        return { success: false, error: 'No DID provided' };
+      }
+
+      console.log(`Saving DID to blockchain for voter with National ID: ${nationalId}`);
+      console.log('DID value to store:', did);
+      
+      // Initialize blockchain service connection
+      console.log('Initializing blockchain service...');
+      const isInitialized = await blockchainService.initialize();
+      console.log('Blockchain initialization result:', isInitialized);
+      
+      if (!isInitialized) {
+        console.error('Failed to initialize blockchain connection');
+        return { success: false, error: 'Blockchain connection failed' };
+      }
+      
+      // Get private key from environment variable
+      const privateKey = process.env.REACT_APP_ADMIN_PRIVATE_KEY;
+      console.log('Private key available:', privateKey ? 'Yes (length: ' + privateKey.length + ')' : 'No');
+      
+      if (!privateKey) {
+        console.error('No admin private key available');
+        return { success: false, error: 'Admin private key not configured' };
+      }
+      
+      // Import the private key
+      console.log('Importing private key...');
+      const importResult = await blockchainService.importPrivateKey(privateKey);
+      console.log('Import private key result:', importResult);
+      
+      if (!importResult.success) {
+        console.error('Failed to import private key:', importResult.error);
+        return { success: false, error: importResult.error };
+      }
+      
+      // Store the DID on the blockchain
+      console.log('Calling blockchain service to store DID...');
+      const result = await blockchainService.storeDID(nationalId, did);
+      console.log('Blockchain storage result:', result);
+      
+      // If this is an insufficient funds error, provide a more helpful message
+      if (result.errorCode === 'INSUFFICIENT_FUNDS') {
+        console.error('Insufficient funds for blockchain transaction');
+        console.log('Wallet address:', result.walletAddress);
+        console.log('Current balance:', result.balance, 'APE');
+        
+        // We'll continue with the registration process but inform the user
+        // that the blockchain storage failed due to insufficient funds
+        return {
+          success: false,
+          error: 'Insufficient APE tokens for blockchain transaction. The voter will be registered in the database only.',
+          isInsufficientFunds: true,
+          walletAddress: result.walletAddress,
+          balance: result.balance
+        };
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error saving to blockchain:', error);
+      return { success: false, error: error.message };
+    }
+  };
+  
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -246,10 +347,82 @@ const VoterRegister = () => {
         return;
       }
       
+      // If we have biometric data with a DID, save it to blockchain before API call
+      let blockchainResult = null;
+      
+      if (formData.biometricData?.did) {
+        console.log('Saving voter DID to blockchain...', formData.biometricData.did);
+        console.log('Voter biometric data:', formData.biometricData);
+        
+        try {
+          // Use the dedicated function to save DID to blockchain
+          blockchainResult = await saveToBlockchain(formData.nationalid, formData.biometricData.did);
+          
+          if (!blockchainResult.success) {
+            console.error('Blockchain storage failed:', blockchainResult.error);
+            
+            // Special handling for insufficient funds error
+            if (blockchainResult.isInsufficientFunds) {
+              console.warn('Continuing with database registration despite blockchain error');
+              // Display a warning but continue with registration
+              setError(`Note: ${blockchainResult.error}`);
+            }
+          } else {
+            console.log('Successfully saved DID to blockchain:', blockchainResult);
+          }
+        } catch (blockchainError) {
+          console.error('Error during blockchain storage:', blockchainError);
+          
+          // Handle insufficient funds errors specially
+          if (blockchainError.message && blockchainError.message.includes('insufficient funds') ||
+              (blockchainError.error && blockchainError.error.includes('insufficient funds')) || 
+              blockchainError.code === 'INSUFFICIENT_FUNDS') {
+            
+            setError('Insufficient funds to execute blockchain transaction. Voter data was saved to the database, but not to the blockchain.');
+            
+            // Ask user if they want to disable blockchain
+            if (window.confirm('Blockchain transaction failed due to insufficient funds. Would you like to disable blockchain transactions temporarily and continue with database-only storage?')) {
+              // Set global flag to skip blockchain
+              blockchainService.setSkipBlockchainOnInsufficientFunds(true);
+            }
+          }
+          // We don't want to fail the entire registration if blockchain storage fails
+          // Just log the error and continue with the regular API call
+        }
+      }
+      
       let apiResponse;
       
       // Create or update the voter record
       if (isEditMode) {
+        // If we're in edit mode and have biometric data with a DID, save it to blockchain before API call
+        let blockchainResult = null;
+        if (formData.biometricData?.did) {
+          console.log('Updating voter DID on blockchain...');
+          
+          try {
+            // Use the dedicated function to save DID to blockchain
+            blockchainResult = await saveToBlockchain(formData.nationalid, formData.biometricData.did);
+            
+            if (!blockchainResult.success) {
+              console.error('Blockchain storage failed:', blockchainResult.error);
+              
+              // Special handling for insufficient funds error
+              if (blockchainResult.isInsufficientFunds) {
+                console.warn('Continuing with database update despite blockchain error');
+                // Display a warning but continue with update
+                setError(`Note: ${blockchainResult.error}`);
+              }
+            } else {
+              console.log('Successfully saved DID to blockchain:', blockchainResult);
+            }
+          } catch (blockchainError) {
+            console.error('Error during blockchain storage for voter update:', blockchainError);
+            // We don't want to fail the entire update if blockchain storage fails
+            // Just log the error and continue with the regular API call
+          }
+        }
+        
         // For updates, use PUT with the voter's ID
         apiResponse = await voterAPI.updateVoter(editingVoterId, {
           ...formData,
@@ -262,14 +435,23 @@ const VoterRegister = () => {
           ...(formData.biometricData?.did && formData.biometricData?.biometric_template ? {
             did: formData.biometricData.did,
             biometric_template: formData.biometricData.biometric_template
+          } : {}),
+          // Include blockchain transaction ID if available
+          ...(blockchainResult?.success ? {
+            blockchain_tx_id: blockchainResult.transactionHash
           } : {})
         });
         
         // Get initial transaction ID (might be pending)
         const initialTxId = apiResponse.transactionId || apiResponse.blockchain_tx_id;
         
+        // Check if blockchain registration was skipped due to insufficient funds
+        const blockchainSkipped = blockchainResult && 
+                                 !blockchainResult.success && 
+                                 blockchainResult.isInsufficientFunds;
+        
         // Start polling for transaction status
-        pollForTransactionStatus(editingVoterId, initialTxId, true);
+        pollForTransactionStatus(editingVoterId, initialTxId, true, blockchainSkipped);
       } else {
         // For new voters, use POST with no ID
         apiResponse = await voterAPI.createVoter({
@@ -293,8 +475,13 @@ const VoterRegister = () => {
         // Get initial transaction ID (might be pending)
         const initialTxId = apiResponse.transactionId || apiResponse.blockchain_tx_id;
         
+        // Check if blockchain registration was skipped due to insufficient funds
+        const blockchainSkipped = blockchainResult && 
+                                 !blockchainResult.success && 
+                                 blockchainResult.isInsufficientFunds;
+        
         // Start polling for transaction status
-        pollForTransactionStatus(newVoterId, initialTxId, false);
+        pollForTransactionStatus(newVoterId, initialTxId, false, blockchainSkipped);
       }
       
       // NOTE: The auto-redirect to step 1 with cleared data will happen
@@ -302,7 +489,25 @@ const VoterRegister = () => {
       
     } catch (err) {
       console.error('Error saving voter:', err);
-      setError(err.message || 'An error occurred while saving the voter record');
+      let errorMessage = err.message || 'An error occurred while saving the voter record';
+      
+      // Check for blockchain-specific errors
+      if (errorMessage.includes('insufficient funds') || 
+          (err.error && err.error.includes('insufficient funds')) ||
+          errorMessage.includes('INSUFFICIENT_FUNDS')) {
+        
+        // Show more user-friendly error
+        errorMessage = 'Insufficient funds to execute blockchain transaction. Voter data was saved to the database, but not to the blockchain.';
+        
+        // Offer option to disable blockchain temporarily
+        if (confirm('Blockchain transaction failed due to insufficient funds. Would you like to disable blockchain transactions temporarily and continue with database-only storage?')) {
+          // Set global flag to skip blockchain
+          blockchainService.setSkipBlockchainOnInsufficientFunds(true);
+          errorMessage += ' Blockchain transactions have been disabled for this session.';
+        }
+      }
+      
+      setError(errorMessage);
       setIsSubmitting(false);
     }
   };
@@ -479,6 +684,28 @@ const VoterRegister = () => {
             prevStep={prevStep}
             handleSubmit={handleFormSubmit}
             isSubmitting={isSubmitting}
+            onEnrollmentComplete={(templateData) => {
+              console.log('Enrollment complete with template data:', templateData);
+              setFormData(prev => ({
+                ...prev,
+                biometricData: {
+                  ...prev.biometricData,
+                  biometric_template: templateData.iso_template_base64
+                }
+              }));
+            }}
+            onDIDGenerated={(didResult) => {
+              console.log('DID generated:', didResult);
+              setFormData(prev => ({
+                ...prev,
+                biometricData: {
+                  ...prev.biometricData,
+                  did: didResult.didKey,
+                  biometric_template: prev.biometricData?.biometric_template
+                }
+              }));
+            }}
+            isEditMode={isEditMode}
           />
         )}
         
@@ -488,7 +715,7 @@ const VoterRegister = () => {
             <div className="flex items-center">
               <svg className="h-5 w-5 text-red-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+            </svg>
               <p className="text-sm text-red-700">{error}</p>
             </div>
           </div>
