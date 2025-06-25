@@ -381,7 +381,7 @@ If tests fail, check:
 - Only derived DIDs (which cannot be reversed) are sent to the server
 - Private keys are properly handled and secured
 
-## Smart Contract Deployment to Avalanche
+## Smart Contract Deployment to APEChain
 
 ### Prerequisites
 
@@ -416,17 +416,18 @@ If tests fail, check:
    # Wallet private key for contract deployment (without 0x prefix)
    PRIVATE_KEY=your_private_key_here
    
-   # Avalanche Fuji Testnet RPC URL and Chain ID
-   REACT_APP_AVALANCHE_API=https://api.avax-test.network
-   REACT_APP_AVALANCHE_CHAIN_ID=43113
-   REACT_APP_AVALANCHE_RPC_ENDPOINT=https://api.avax-test.network/ext/bc/C/rpc
-   REACT_APP_AVALANCHE_EXPLORER_URL=https://testnet.snowtrace.io
+   # APEChain Curtis Testnet RPC URL and Chain ID
+   REACT_APP_APECHAIN_NETWORK_NAME=APEChain Curtis Testnet
+   REACT_APP_APECHAIN_API=https://curtis.apescan.io
+   REACT_APP_APECHAIN_CHAIN_ID=33111
+   REACT_APP_APECHAIN_RPC_ENDPOINT=https://curtis.rpc.caldera.xyz/http
+   REACT_APP_APECHAIN_EXPLORER_URL=https://curtis.apescan.io
    ```
 
 ### Deployment Steps
 
 1. **Configure Hardhat**:
-   - Make sure your `hardhat.config.js` includes the Avalanche Fuji testnet configuration:
+   - Make sure your `hardhat.config.js` includes the APEChain Curtis testnet configuration:
 
    ```javascript
    require("@nomicfoundation/hardhat-toolbox");
@@ -437,21 +438,18 @@ If tests fail, check:
    module.exports = {
      solidity: "0.8.19",
      networks: {
-       fuji: {
-         url: process.env.REACT_APP_AVALANCHE_RPC_ENDPOINT || "https://api.avax-test.network/ext/bc/C/rpc",
-         chainId: parseInt(process.env.REACT_APP_AVALANCHE_CHAIN_ID || "43113"),
+       apechain: {
+         url: process.env.REACT_APP_APECHAIN_RPC_ENDPOINT || "https://curtis.rpc.caldera.xyz/http",
+         chainId: parseInt(process.env.REACT_APP_APECHAIN_CHAIN_ID || "33111"),
          accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : [],
          gasPrice: 225000000000,
        },
-       mainnet: {
-         url: "https://api.avax.network/ext/bc/C/rpc",
-         chainId: 43114,
-         accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : [],
-         gasPrice: 225000000000,
+       hardhat: {
+         chainId: 31337,
        }
      },
      etherscan: {
-       apiKey: process.env.SNOWTRACE_API_KEY,
+       apiKey: process.env.APESCAN_API_KEY,
      },
    };
    ```
@@ -466,14 +464,14 @@ If tests fail, check:
    npx hardhat compile
    ```
 
-4. **Deploy to Avalanche Fuji Testnet**:
+4. **Deploy to APEChain Curtis Testnet**:
    - Create or modify a deployment script in `scripts/deploy.js`:
    
    ```javascript
    const hre = require("hardhat");
 
    async function main() {
-     console.log("Deploying VoterDID contract to Avalanche Fuji Testnet...");
+     console.log("Deploying VoterDID contract to APEChain Curtis Testnet...");
    
      // Get the ContractFactory
      const VoterDID = await hre.ethers.getContractFactory("VoterDID");
@@ -487,7 +485,7 @@ If tests fail, check:
      console.log(`VoterDID deployed to: ${voterDID.address}`);
      console.log(`Transaction hash: ${voterDID.deployTransaction.hash}`);
      console.log(`Block number: ${voterDID.deployTransaction.blockNumber}`);
-     console.log("View on explorer:", `${process.env.REACT_APP_AVALANCHE_EXPLORER_URL}/address/${voterDID.address}`);
+     console.log("View on explorer:", `${process.env.REACT_APP_APECHAIN_EXPLORER_URL}/address/${voterDID.address}`);
    
      return voterDID;
    }
@@ -502,16 +500,10 @@ If tests fail, check:
    
    - Run deployment:
    ```bash
-   npx hardhat run scripts/deploy.js --network fuji
+   npx hardhat run scripts/deploy.js --network apechain
    ```
    
-5. **Verify Smart Contract on Snowtrace (Optional)**:
-   ```bash
-   # Get your contract address from the deployment output
-   npx hardhat verify --network fuji YOUR_CONTRACT_ADDRESS
-   ```
-
-6. **Update Frontend Configuration**:
+5. **Update Frontend Configuration**:
    - Add the deployed contract address to your `.env` file:
    ```
    REACT_APP_VOTER_DID_CONTRACT_ADDRESS=your_deployed_contract_address
@@ -521,7 +513,7 @@ If tests fail, check:
 
 1. **Manual Testing via Hardhat Console**:
    ```bash
-   npx hardhat console --network fuji
+   npx hardhat console --network apechain
    
    # Inside the console:
    > const VoterDID = await ethers.getContractFactory("VoterDID")
@@ -532,13 +524,13 @@ If tests fail, check:
 
 2. **Run Contract Tests**:
    ```bash
-   npx hardhat test --network fuji
+   npx hardhat test --network apechain
    ```
 
 ### Common Issues and Solutions
 
-1. **Not enough funds**: Ensure your wallet has enough AVAX for deployment
-   - Get test AVAX from the [Fuji Testnet Faucet](https://faucet.avax.network/)
+1. **Not enough funds**: Ensure your wallet has enough APE tokens for deployment
+   - Get test APE tokens from the APEChain Curtis Testnet Faucet
 
 2. **Gas price errors**: Update the gasPrice in hardhat.config.js
 
@@ -549,14 +541,14 @@ If tests fail, check:
 5. **Nonce too high/low**: If you're reusing a wallet address, you may need to reset your account nonce:
    ```bash
    # Check your current nonce
-   npx hardhat run scripts/check-nonce.js --network fuji
+   npx hardhat run scripts/check-nonce.js --network apechain
    ```
 
 6. **Contract verification failures**: Ensure you're using the exact compiler version used for deployment
 
 ### Further Resources
 
-- [Avalanche Documentation](https://docs.avax.network/)
+- [APEChain Documentation](https://docs.apechain.io/)
 - [Hardhat Documentation](https://hardhat.org/getting-started/)
-- [Fuji Testnet Explorer](https://testnet.snowtrace.io/)
-- [Avalanche Fuji Testnet Faucet](https://faucet.avax.network/)
+- [APEChain Curtis Testnet Explorer](https://curtis.apescan.io/)
+- [APEChain Curtis Testnet Faucet](https://faucet.apechain.io/)

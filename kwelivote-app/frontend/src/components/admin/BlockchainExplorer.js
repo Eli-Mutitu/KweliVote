@@ -52,7 +52,7 @@ const BlockchainExplorer = () => {
         setBlockchainStatus({
           initialized: isInitialized,
           message: isInitialized 
-            ? 'Connected to Avalanche blockchain' 
+            ? 'Connected to APEChain blockchain' 
             : 'Blockchain not configured. Please set up the blockchain infrastructure first.'
         });
         
@@ -224,7 +224,7 @@ const BlockchainExplorer = () => {
         <div className="mb-6 text-center">
           <h2 className="text-2xl font-bold text-kweli-dark mb-2">Blockchain DID Explorer</h2>
           <p className="text-gray-600">
-            Search and verify voter DIDs stored on the Avalanche subnet
+            Search and verify voter DIDs stored on the APEChain blockchain
           </p>
         </div>
         
@@ -254,7 +254,7 @@ const BlockchainExplorer = () => {
               </svg>
               <div>
                 <p className="text-blue-700">Please set up the blockchain infrastructure before using the explorer.</p>
-                <p className="text-blue-700 mt-1">Navigate to the blockchain setup page to configure the Avalanche subnet.</p>
+                <p className="text-blue-700 mt-1">Navigate to the blockchain setup page to configure the APEChain blockchain.</p>
               </div>
             </div>
           </div>
@@ -521,7 +521,7 @@ const BlockchainExplorer = () => {
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-2">About Blockchain Verification</h3>
             <p className="text-sm text-gray-600 mb-2">
-              The KweliVote system stores voter Decentralized Identifiers (DIDs) on a custom Avalanche blockchain subnet to ensure
+              The KweliVote system stores voter Decentralized Identifiers (DIDs) on the APEChain blockchain to ensure
               the integrity and transparency of the voter registration process.
             </p>
             <p className="text-sm text-gray-600 mb-2">

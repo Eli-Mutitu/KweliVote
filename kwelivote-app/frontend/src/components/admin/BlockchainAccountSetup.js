@@ -76,7 +76,7 @@ const BlockchainAccountSetup = () => {
         <div className="mb-6 text-center">
           <h2 className="text-2xl font-bold text-kweli-dark mb-2">Blockchain Account Setup</h2>
           <p className="text-gray-600">
-            Enter your Avalanche private key to validate your account and view your balance
+            Enter your APEChain private key to validate your account and view your balance
           </p>
         </div>
 
@@ -84,7 +84,7 @@ const BlockchainAccountSetup = () => {
           {/* Private Key Input */}
           <div>
             <label htmlFor="privateKey" className="block text-sm font-medium text-gray-700 mb-1">
-              Avalanche Private Key
+              APEChain Private Key
             </label>
             <div className="relative">
               <input
@@ -94,7 +94,7 @@ const BlockchainAccountSetup = () => {
                 value={privateKey}
                 onChange={handleKeyChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-kweli-primary focus:border-kweli-primary"
-                placeholder="Enter your Avalanche private key"
+                placeholder="Enter your APEChain private key"
                 required
               />
               <button
@@ -169,9 +169,9 @@ const BlockchainAccountSetup = () => {
                   
                   {/* Account Balance */}
                   <div>
-                    <p className="text-sm font-medium text-gray-500">AVAX Balance</p>
+                    <p className="text-sm font-medium text-gray-500">APE Balance</p>
                     <p className="mt-1 text-sm text-gray-900">
-                      {accountInfo.balance} AVAX
+                      {accountInfo.balance} APE
                     </p>
                   </div>
                   
@@ -203,12 +203,12 @@ const BlockchainAccountSetup = () => {
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-2">About Blockchain Accounts</h3>
             <p className="text-sm text-gray-600 mb-2">
-              The KweliVote system uses Avalanche blockchain accounts to securely manage voter Decentralized Identifiers (DIDs)
+              The KweliVote system uses APEChain blockchain accounts to securely manage voter Decentralized Identifiers (DIDs)
               and ensure the integrity of the electoral process.
             </p>
             <p className="text-sm text-gray-600">
               Your private key provides access to your blockchain account. Never share your private key with anyone 
-              and make sure you have sufficient AVAX to perform blockchain operations.
+              and make sure you have sufficient APE to perform blockchain operations.
             </p>
           </div>
         </div>

@@ -68,7 +68,7 @@ const BlockchainSetup = () => {
 
     try {
       if (!privateKey) {
-        throw new Error('Please enter your Avalanche private key');
+        throw new Error('Please enter your APEChain private key');
       }
 
       // Pass the blockchain configuration to the service
@@ -115,7 +115,7 @@ const BlockchainSetup = () => {
         <div className="mb-6 text-center">
           <h2 className="text-2xl font-bold text-kweli-dark mb-2">Blockchain Infrastructure Setup</h2>
           <p className="text-gray-600">
-            Configure the Avalanche blockchain subnet for storing voter DIDs
+            Configure the APEChain blockchain for storing voter DIDs
           </p>
         </div>
 
@@ -150,7 +150,7 @@ const BlockchainSetup = () => {
             {/* Private Key Input */}
             <div>
               <label htmlFor="privateKey" className="block text-sm font-medium text-gray-700 mb-1">
-                Avalanche Private Key
+                APEChain Private Key
               </label>
               <div className="relative">
                 <input
@@ -160,7 +160,7 @@ const BlockchainSetup = () => {
                   value={privateKey}
                   onChange={(e) => setPrivateKey(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-kweli-primary focus:border-kweli-primary"
-                  placeholder="Enter your Avalanche private key"
+                  placeholder="Enter your APEChain private key"
                   required
                 />
                 <button
@@ -183,7 +183,7 @@ const BlockchainSetup = () => {
               </div>
               <p className="mt-1 text-sm text-gray-500">
                 This private key will be used to create a subnet and deploy the smart contract.
-                Make sure you have enough AVAX in this account.
+                Make sure you have enough APE in this account.
               </p>
             </div>
             
@@ -207,7 +207,7 @@ const BlockchainSetup = () => {
                     required
                   />
                   <p className="mt-1 text-xs text-gray-500">
-                    Name for your custom Avalanche subnet
+                    Name for your custom APEChain subnet
                   </p>
                 </div>
                 
@@ -336,7 +336,7 @@ const BlockchainSetup = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Setting up Avalanche subnet...
+                    Setting up APEChain integration...
                   </div>
                 ) : 'Set Up Blockchain Infrastructure'}
               </button>
@@ -368,13 +368,13 @@ const BlockchainSetup = () => {
 
         <div className="mt-6">
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">About Avalanche Subnets</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">About APEChain</h3>
             <p className="text-sm text-gray-600 mb-2">
-              Avalanche subnets are custom, independent blockchains that can have their own validator sets and consensus rules.
-              They're ideal for applications that need dedicated blockchain infrastructure.
+              APEChain provides a secure and efficient blockchain platform with customizable features.
+              It's ideal for applications that need dedicated blockchain infrastructure.
             </p>
             <p className="text-sm text-gray-600">
-              KweliVote uses a custom Avalanche subnet to store voter DIDs securely and immutably, ensuring
+              KweliVote uses APEChain to store voter DIDs securely and immutably, ensuring
               that the voter registration process is transparent and tamper-proof.
             </p>
           </div>

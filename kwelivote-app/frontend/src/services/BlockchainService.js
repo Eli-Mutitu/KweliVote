@@ -3,22 +3,22 @@ import { ethers } from 'ethers';
 import VoterDIDArtifact from '../artifacts/contracts/VoterDID.sol/VoterDID.json';
 
 /**
- * BlockchainService - Simple service for interacting with Avalanche Fuji testnet C-Chain
+ * BlockchainService - Simple service for interacting with APEChain Curtis Testnet
  * 
  * This service provides basic functionality for:
- * 1. Connecting to the Avalanche Fuji testnet
+ * 1. Connecting to the APEChain Curtis Testnet
  * 2. Managing private keys
  * 3. Deploying and interacting with smart contracts
  * 4. Verifying voter DIDs on the blockchain
  */
 class BlockchainService {
   constructor() {
-    // Avalanche Fuji Testnet C-Chain Configuration from environment variables
+    // APEChain Curtis Testnet Configuration from environment variables
     this.network = {
-      name: process.env.REACT_APP_AVALANCHE_NETWORK_NAME || 'Avalanche Fuji C-Chain',
-      chainId: parseInt(process.env.REACT_APP_AVALANCHE_CHAIN_ID || '43113'),
-      rpcUrl: process.env.REACT_APP_AVALANCHE_RPC_ENDPOINT || 'https://api.avax-test.network/ext/bc/C/rpc',
-      explorer: process.env.REACT_APP_AVALANCHE_EXPLORER_URL || 'https://testnet.snowtrace.io',
+      name: process.env.REACT_APP_APECHAIN_NETWORK_NAME || 'APEChain Curtis Testnet',
+      chainId: parseInt(process.env.REACT_APP_APECHAIN_CHAIN_ID || '33111'),
+      rpcUrl: process.env.REACT_APP_APECHAIN_RPC_ENDPOINT || 'https://curtis.rpc.caldera.xyz/http',
+      explorer: process.env.REACT_APP_APECHAIN_EXPLORER_URL || 'https://curtis.apescan.io',
     };
 
     this.provider = null;
@@ -29,12 +29,12 @@ class BlockchainService {
   }
 
   /**
-   * Initialize the blockchain service and connection to Avalanche Fuji C-Chain
+   * Initialize the blockchain service and connection to APEChain Curtis Testnet
    * @returns {boolean} Whether initialization was successful
    */
   async initialize() {
     try {
-      // Create an ethers provider for Avalanche Fuji testnet
+      // Create an ethers provider for APEChain Curtis Testnet
       this.provider = new ethers.providers.JsonRpcProvider(this.network.rpcUrl);
       
       // Test the connection
@@ -464,9 +464,9 @@ class BlockchainService {
   }
 
   /**
-   * Get account balance in AVAX
+   * Get account balance in APE
    * @param {string} address - Account address
-   * @returns {string} Account balance in AVAX
+   * @returns {string} Account balance in APE
    */
   async getAccountBalance(address) {
     if (!this.isInitialized) {
@@ -477,10 +477,10 @@ class BlockchainService {
       // Get balance in wei
       const balance = await this.provider.getBalance(address);
       
-      // Convert from wei to AVAX (1 AVAX = 10^18 wei)
-      const balanceInAvax = ethers.utils.formatEther(balance);
+      // Convert from wei to APE (1 APE = 10^18 wei)
+      const balanceInApe = ethers.utils.formatEther(balance);
       
-      return balanceInAvax;
+      return balanceInApe;
     } catch (error) {
       console.error('Failed to get account balance:', error);
       throw error;
